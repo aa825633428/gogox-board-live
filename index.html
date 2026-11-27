@@ -246,6 +246,7 @@ body.panel-open .content{padding-right:452px;}
 .pg-head .pgm{font-size:10px;font-weight:500;color:#98A2B3;margin-left:auto;}
 .pg-head.closed .pgm{color:#B0B7C2;}
 .pg-head .pgn{font-size:10.5px;font-weight:500;color:#98A2B3;background:#F1F4F8;border-radius:5px;padding:1px 6px;}
+.pg-empty{padding:0 0 6px 22px;}
 /* 列表里平台组内的类型细分标题 */
 .sub-lab{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8E96A3;margin:6px 2px 4px;letter-spacing:.2px;}
 .sub-lab .sl-dot{width:5px;height:5px;border-radius:50%;background:#C3CAD5;flex:none;}
@@ -2111,7 +2112,7 @@ function backToCanvas(){
   render();
   syncPan(!pan.inited);
 }
-/* 总览分组：按「实际出现的平台」分组——板块里配过的平台在前，条目里新出现的平台补在后面，空的平台不占位 */
+/* 总览分组：板块里配过的平台一律出组（0 条也给「＋ 加一条」入口），条目里新出现的平台补在后面 */
 function listPlatGroups(biz, arr){
   const order = (biz === '未分类') ? [] : platsOf(biz).slice();
   const buckets = {};
@@ -2129,8 +2130,7 @@ function listPlatGroups(biz, arr){
     if(x.pin !== y.pin) return x.pin ? -1 : 1;
     return x.pri.localeCompare(y.pri) || (y.created - x.created);
   };
-  const out = order.filter(function(p){ return buckets[p] && buckets[p].length; })
-    .map(function(p){ return {name:p, items:buckets[p].slice().sort(sorter)}; });
+  const out = order.map(function(p){ return {name:p, items:(buckets[p] || []).slice().sort(sorter)}; });
   if(loose.length) out.push({name:'未分平台', items:loose.slice().sort(sorter), loose:true});
   return out;
 }
@@ -2154,6 +2154,10 @@ function platGroupsHTML(biz, arr){
     if(closed) return head;
 
     const listOf = function(list){ return `<div class="items">${list.map(function(it){ return itemHTML(it, true); }).join('')}</div>`; };
+    if(!pg.items.length){
+      /* 平台配了但还没有条目：给一个加任务的入口，别让平台在总览里凭空消失 */
+      return head + `<div class="pg-empty"><button class="btn-plain" data-act="add-task" data-biz="${esc(biz)}" data-plat="${esc(pg.name)}" data-stage="week">＋ 往「${esc(pg.name)}」加一条任务</button></div>`;
+    }
     let body = '';
     if(iss.length) body += `<div class="sub-lab issue"><span class="sl-dot"></span>问题 <b>${iss.length}</b></div>` + listOf(iss);
     if(tsk.length) body += `<div class="sub-lab task"><span class="sl-dot"></span>任务 <b>${tsk.length}</b></div>` + listOf(tsk);
@@ -2176,6 +2180,9 @@ function renderAllList(){
       .sort((x,y)=> (x.pin !== y.pin ? (x.pin ? -1 : 1) : (x.pri.localeCompare(y.pri) || (y.created - x.created))));
     if(!arr.length){
       if((state.biz || []).indexOf(b) < 0) return;   // 自建的空板块也列出来，方便直接加任务
+      /* 板块还空着：配过平台就照旧按平台出组（每组给加任务入口），没配过平台才只给板块级按钮 */
+      const plats = isUn ? [] : platsOf(b);
+      const emptyGroups = plats.length ? platGroupsHTML(b, []) : `<div style="padding:2px 0 4px"><button class="btn-plain" data-act="add-biz" data-biz="${esc(b)}" data-stage="week">＋ 往「${esc(b)}」加一条任务</button></div>`;
       parts.push(`<section class="sec">
         <div class="stage-head">
           <span class="sdot" style="background:${bizColor(b)}"></span>
@@ -2183,7 +2190,7 @@ function renderAllList(){
           <span class="cnt">0</span>
           <span class="shint">这条支线还没任务</span>
         </div>
-        <div style="padding:2px 0 4px"><button class="btn-plain" data-act="add-biz" data-biz="${esc(b)}" data-stage="week">＋ 往「${esc(b)}」加一条任务</button></div>
+        ${emptyGroups}
       </section>`);
       return;
     }
