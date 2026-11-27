@@ -277,7 +277,7 @@ body.panel-open .content{padding-right:452px;}
 .chips{display:flex;gap:4px;flex:none;margin-left:auto;}
 .chip{font-size:10px;padding:1.5px 6px;border-radius:5px;background:#F2F4F7;color:#6C7481;border:1px solid #E9ECF1;white-space:nowrap;}
 .chip.biz{background:#FFF4EC;color:#C25A05;border-color:#FFE3CE;}
-.time{font-size:10.5px;color:#AEB5C1;flex:none;font-variant-numeric:tabular-nums;}
+.time{font-size:10.5px;color:#8E96A3;flex:none;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .chev{font-size:14px;color:#A9B0BC;flex:none;transition:transform .18s;line-height:1;}
 .item.open .chev{transform:rotate(90deg);color:var(--brand);}
 
@@ -683,8 +683,9 @@ body.panel-open .content{padding-right:452px;}
 }
 .modal-head .x{margin-left:0;}
 
-/* 未排期的日期弱化显示 */
+/* 建立日期：一直弱化显示（不再是「未排期」提示） */
 .time.no{color:#B0B7C2;font-weight:400;}
+.time{cursor:default;}
 
 @media (max-width:760px){
   .pk-arrow{width:30px;height:30px;right:6px;font-size:12px;}
@@ -1204,7 +1205,7 @@ function normalize(it){
     doneAt: doneAt,
     pin: !!it.pin,
     next: it.next || '',
-    created: it.created || Date.now(),
+    created: it.created || upd,
     updated: upd,
     aiPlan: it.aiPlan && it.aiPlan.html ? it.aiPlan : null
   };
@@ -1608,6 +1609,9 @@ function renderNav(){
 function itemHTML(it, compact){
   const open = ui.expandedId === it.id;
   const pri = it.pri || '2';
+  const cAt = it.created || it.updated || 0;
+  const cTip = (cAt ? '建立于 ' + fmtTime(cAt) : '建立时间未知')
+    + (it.date ? '　·　排期日 ' + it.date.slice(5).replace('-', '/') : '　·　未排期');
   const aiBlock = it.aiPlan
     ? `<div class="aibox">
          <span class="ailb">AI 方案 · ${fmtTime(it.aiPlan.at)}</span>
@@ -1626,7 +1630,7 @@ function itemHTML(it, compact){
         ${it.biz ? `<span class="chip biz">${esc(it.biz)}</span>` : ''}
         ${it.platform ? `<span class="chip">${esc(it.platform)}</span>` : ''}
       </span>
-      <span class="time${it.date ? '' : ' no'}">${it.date ? it.date.slice(5).replace('-', '/') : '未排期'}</span>
+      <span class="time no" title="${esc(cTip)}">建 ${cAt ? fmtMD(cAt) : '—'}</span>
       <span class="chev">›</span>
     </div>
     <div class="body">
@@ -2760,7 +2764,7 @@ function renderDetail(){
     </div>
     <div class="dp-card">
       <div class="block-h" style="margin-top:0">这条记录</div>
-      <div class="block-t">创建 ${fmtTime(it.created)}　·　最后更新 ${fmtTime(it.updated)}</div>
+      <div class="block-t">建立 ${fmtTime(it.created)}　·　最后更新 ${fmtTime(it.updated)}</div>
     </div>`;
 
   document.getElementById('dp-side').innerHTML = `
@@ -3611,9 +3615,10 @@ function hasModel(){
 
 function summaryLine(it){
   const parts = [];
+  if(it.created) parts.push('建立 ' + fmtMD(it.created));
   if(it.pri && it.pri !== '1') parts.push(PRI_LABEL[it.pri] || '');
   if(it.stage && it.stage !== 'week') parts.push(STAGE_MAP[it.stage] ? STAGE_MAP[it.stage].name : '');
-  if(it.date) parts.push(it.date.slice(5).replace('-', '/'));
+  if(it.date) parts.push('排期 ' + it.date.slice(5).replace('-', '/'));
   if(it.pin) parts.push('置顶');
   return parts.filter(Boolean).join(' · ');
 }
