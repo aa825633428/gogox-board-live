@@ -53,6 +53,12 @@ input,textarea,select{font-family:inherit;}
 .stat.week .n{color:#6CA6FF;}
 .stat.later .n{color:#B6BDC9;}
 .stat.done .n{color:#4ADE9A;}
+.stat.issue{grid-column:1 / -1;background:#2A2326;border-color:#3E2E31;}
+.stat.issue .n{color:#FF7A7A;}
+.stat.issue .t{color:#B58A8A;}
+.stat.issue.zero{background:#262930;border-color:#31353E;}
+.stat.issue.zero .n{color:#6F7785;}
+.stat.issue.zero .t{color:#7A828F;}
 
 .nav{display:flex;flex-direction:column;gap:3px;}
 .navitem{
@@ -735,6 +741,7 @@ body.panel-open .content{padding-right:452px;}
         <div class="stat week"><div class="n" id="st-week">0</div><div class="t">本周要做</div></div>
         <div class="stat later"><div class="n" id="st-later">0</div><div class="t">待排期</div></div>
         <div class="stat done"><div class="n" id="st-done">0</div><div class="t">已完成</div></div>
+        <div class="stat issue" id="st-issue-box"><div class="n" id="st-issue">0</div><div class="t">未解决的问题</div></div>
       </div>
 
       <div class="sec-label">板块 <span style="color:#6F7785;font-size:10px">业务线</span></div>
@@ -1568,10 +1575,17 @@ function renderStats(){
   const week = state.items.filter(i=>i.stage === 'week').length;
   const later = state.items.filter(i=>i.stage === 'later').length;
   const done = state.items.filter(i=>i.stage === 'done').length;
+  const issueOpen = state.items.filter(i=>i.type === 'issue' && i.stage !== 'done').length;
   document.getElementById('st-all').textContent = all;
   document.getElementById('st-week').textContent = week;
   document.getElementById('st-later').textContent = later;
   document.getElementById('st-done').textContent = done;
+  const stIssue = document.getElementById('st-issue');
+  if(stIssue){
+    stIssue.textContent = issueOpen;
+    const box = document.getElementById('st-issue-box');
+    if(box) box.classList.toggle('zero', issueOpen === 0);
+  }
 }
 
 function renderNav(){
