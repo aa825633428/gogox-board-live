@@ -247,6 +247,10 @@ body.panel-open .content{padding-right:452px;}
 .pg-head.closed .pgm{color:#B0B7C2;}
 .pg-head .pgn{font-size:10.5px;font-weight:500;color:#98A2B3;background:#F1F4F8;border-radius:5px;padding:1px 6px;}
 .pg-empty{padding:0 0 6px 22px;}
+.delx{flex:none;width:22px;height:22px;line-height:20px;text-align:center;padding:0;border:0;background:transparent;color:#C2C8D2;font-size:12px;border-radius:6px;cursor:pointer;opacity:0;transition:.15s;}
+.pg-head:hover .delx{opacity:1;}
+.delx:hover{background:#FDECEC;color:#D63A2F;}
+@media (hover:none){ .delx{opacity:1;} }
 /* 列表里平台组内的类型细分标题 */
 .sub-lab{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8E96A3;margin:6px 2px 4px;letter-spacing:.2px;}
 .sub-lab .sl-dot{width:5px;height:5px;border-radius:50%;background:#C3CAD5;flex:none;}
@@ -327,6 +331,9 @@ body.panel-open .content{padding-right:452px;}
 .act{background:#fff;border:1px solid #E2E6ED;color:var(--ink-2);border-radius:7px;padding:5px 10px;font-size:11.5px;transition:.15s;}
 .act:hover{border-color:#C9D0DA;background:#FAFBFC;}
 .act.primary{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 3px 9px rgba(255,106,0,.22);}
+.act.danger{color:#C0392B;border-color:#F1D8D4;}
+.act.danger:hover{background:#FDF2F1;border-color:#E9C2BC;}
+.item:hover .delx{opacity:1;}
 .act.primary:hover{background:var(--brand-deep);}
 .stagesw{display:flex;align-items:center;gap:3px;margin-left:auto;font-size:10.5px;color:var(--muted);}
 .stagesw span{margin-right:2px;}
@@ -1671,6 +1678,7 @@ function itemHTML(it, compact){
         ${it.platform ? `<span class="chip">${esc(it.platform)}</span>` : ''}
       </span>
       <span class="time no" title="${esc(cTip)}">建 ${cAt ? fmtMD(cAt) : '—'}</span>
+      <button class="delx" data-act="del-task" data-id="${it.id}" title="删除这条">✕</button>
       <span class="chev">›</span>
     </div>
     <div class="body">
@@ -1681,6 +1689,7 @@ function itemHTML(it, compact){
         <button class="act primary" data-act="ai" data-id="${it.id}">✦ AI 方案</button>
         <button class="act" data-act="edit" data-id="${it.id}">编辑</button>
         <button class="act" data-act="pin" data-id="${it.id}">${it.pin ? '取消置顶' : '置顶'}</button>
+        <button class="act danger" data-act="del-task" data-id="${it.id}">删除</button>
         <div class="stagesw">
           <span>移到</span>
           ${ALL_STAGES.map(s=>`<button class="${it.stage===s.key?'on':''}" data-act="stage" data-id="${it.id}" data-stage="${s.key}">${s.short}</button>`).join('')}
@@ -2145,11 +2154,14 @@ function platGroupsHTML(biz, arr){
     const tsk = pg.items.filter(function(i){ return i.type !== 'issue'; });
     const summary = [iss.length ? '问题 ' + iss.length : '', tsk.length ? '任务 ' + tsk.length : '']
       .filter(Boolean).join(' · ');
+    /* 只有板块里登记过的平台才给删除入口：未登记的「实际平台」删了也还在，会误导 */
+    const canDel = !pg.loose && (biz === '未分类' ? false : platsOf(biz).indexOf(pg.name) >= 0);
     const head = `<div class="pg-head${closed ? ' closed' : ''}" data-act="plat" data-biz="${esc(biz)}" data-plat="${esc(pg.name)}" title="点击收起 / 展开这个平台">
         <span class="pgar">${closed ? '▸' : '▾'}</span>
         <span class="pgnm">${esc(pg.name)}</span>
         <span class="pgn">${pg.items.length} 条</span>
         <span class="pgm">${summary}</span>
+        ${canDel ? `<button class="delx" data-act="del-plat" data-biz="${esc(biz)}" data-plat="${esc(pg.name)}" title="删除平台分栏「${esc(pg.name)}」">✕</button>` : ''}
       </div>`;
     if(closed) return head;
 
