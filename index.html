@@ -171,7 +171,13 @@ body.panel-open .content{padding-right:452px;}
 .node-task.is-issue{background:#FFF7F7;border-color:#F6D5D5;}
 .node-task.is-issue .tname{color:#94302F;}
 .node-task.is-issue:hover{border-color:#F2B9B9;background:#FFF3F3;}
-.pill.plat .pcount.iss{color:#C43333;background:#FDECEC;font-weight:600;}
+/* 列内分区小标题：问题 / 任务 */
+.sec-lab{position:absolute;display:flex;align-items:center;gap:5px;height:18px;font-size:10.5px;color:#8E96A3;letter-spacing:.3px;padding-left:2px;}
+.sec-lab .sl-dot{width:5px;height:5px;border-radius:50%;background:#C3CAD5;flex:none;}
+.sec-lab .sl-n{color:#5F6875;font-variant-numeric:tabular-nums;}
+.sec-lab.issue{color:#C43333;}
+.sec-lab.issue .sl-dot{background:#E24A4A;}
+.sec-lab.issue .sl-n{color:#C43333;font-weight:600;}
 .node-task .taidot{font-size:10px;color:var(--brand);flex:none;}
 .node-task .pinmark{font-size:9px;flex:none;}
 
@@ -1781,7 +1787,6 @@ function renderFlow(){
       const key = g.biz + '||' + pg.name;
       const pOpen = ui.closedPlat.indexOf(key) < 0;
       const custom = !!(bo.x || bo.y || po.x || po.y);
-      const issN = pg.items.filter(function(i){ return i.type === 'issue'; }).length;
 
       // 板块按钮 → 列头：默认走横杆折线，被拖过就直接连
       if(custom){
@@ -1795,7 +1800,7 @@ function renderFlow(){
           <span class="car">${pOpen?'▾':'▸'}</span>
           <span class="pdot" style="background:${g.color}"></span>
           <span class="pname">${esc(pg.name)}</span>
-          <span class="pcount">${pg.items.length}</span>${issN ? `<span class="pcount iss" title="这一列里有 ${issN} 条问题">问题 ${issN}</span>` : ''}
+          <span class="pcount">${pg.items.length}</span>
           ${pg.loose ? '' : `<span class="hoverx" data-act="del-plat" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="删除这个平台分栏">✕</span>`}
           <span class="plusx" data-act="add-task" data-biz="${esc(g.biz)}" data-plat="${esc(pg.loose ? '' : pg.name)}" data-plat-key="${esc(pg.name)}" data-stage="week" title="往「${esc(pg.name)}」加一条任务">+</span>
         </div>`);
@@ -1805,23 +1810,37 @@ function renderFlow(){
       let y = colTop + PH;
 
       if(pOpen){
-        y += PGAPIN;
-        pg.items.forEach(function(it){
-          const to = freeOf('t:' + it.id);
-          const tLeft = Math.round(colLeft + to.x);
-          const tTop = Math.round(y + to.y);
-          const sel = (ui.panelId === it.id) ? ' sel' : '';
-          nodes.push(`<div class="node-task p${it.pri}${it.type === 'issue' ? ' is-issue' : ''}${sel}" data-act="open" data-id="${it.id}" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="按住可拖动：${esc(it.title)}" style="left:${tLeft}px;top:${tTop}px;width:${TW}px">
-              <span class="tname">${esc(it.title)}</span>
-              ${it.type === 'issue' ? '<span class="tflag">问题</span>' : ''}
-              ${it.pin ? '<span class="pinmark">📌</span>' : ''}
-              ${it.aiPlan ? '<span class="taidot" title="已有 AI 方案">✦</span>' : ''}
-              <span class="hoverx" data-act="del-task" data-id="${it.id}" title="删除这条任务">✕</span>
+        /* 列内按类型分区：问题在上、任务在下，各带一个小标题，避免混在一起看不清 */
+        const SECH = 18, SECGAP = 16;
+        const secs = [];
+        const issItems = pg.items.filter(function(i){ return i.type === 'issue'; });
+        const tskItems = pg.items.filter(function(i){ return i.type !== 'issue'; });
+        if(issItems.length) secs.push({key:'issue', label:'问题', items:issItems});
+        if(tskItems.length) secs.push({key:'task', label:'任务', items:tskItems});
+
+        secs.forEach(function(sec, si){
+          y += (si === 0 ? PGAPIN : SECGAP);
+          nodes.push(`<div class="sec-lab ${sec.key}" style="left:${Math.round(colLeft)}px;top:${Math.round(y)}px;width:${TW}px" title="这一列有 ${sec.items.length} 条${sec.label}">
+              <span class="sl-dot"></span>${sec.label} <span class="sl-n">${sec.items.length}</span>
             </div>`);
-          keepX(tLeft, TW);
-          links.push({d: curveV(colCx, colTop + PH, colCx, tTop), c: g.color, w: 1.1, o: .24});
-          y += TH + TGAP;
-          colMax = Math.max(colMax, tTop + TH);
+          y += SECH + 4;
+          sec.items.forEach(function(it){
+            const to = freeOf('t:' + it.id);
+            const tLeft = Math.round(colLeft + to.x);
+            const tTop = Math.round(y + to.y);
+            const sel = (ui.panelId === it.id) ? ' sel' : '';
+            nodes.push(`<div class="node-task p${it.pri}${it.type === 'issue' ? ' is-issue' : ''}${sel}" data-act="open" data-id="${it.id}" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="按住可拖动：${esc(it.title)}" style="left:${tLeft}px;top:${tTop}px;width:${TW}px">
+                <span class="tname">${esc(it.title)}</span>
+                ${it.type === 'issue' ? '<span class="tflag">问题</span>' : ''}
+                ${it.pin ? '<span class="pinmark">📌</span>' : ''}
+                ${it.aiPlan ? '<span class="taidot" title="已有 AI 方案">✦</span>' : ''}
+                <span class="hoverx" data-act="del-task" data-id="${it.id}" title="删除这条任务">✕</span>
+              </div>`);
+            keepX(tLeft, TW);
+            links.push({d: curveV(colCx, colTop + PH, colCx, tTop), c: g.color, w: 1.1, o: .24});
+            y += TH + TGAP;
+            colMax = Math.max(colMax, tTop + TH);
+          });
         });
       }
     });
