@@ -629,6 +629,75 @@ body.panel-open .content{padding-right:452px;}
   .undo.show{transform:translateY(0);}
   .undo .undo-t{flex:1;}
 }
+
+/* ====== 随手记改造：自定义下拉 / 折叠 / AI 补全 ====== */
+
+/* 自定义选择器（iOS 不认 datalist，这里自己画候选面板） */
+.picker{position:relative;}
+.picker input{padding-right:34px;}
+.pk-arrow{
+  position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  width:24px;height:24px;border:none;border-radius:6px;background:#F2F4F7;color:var(--muted);
+  font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;
+}
+.pk-arrow:hover{background:var(--brand-soft);color:var(--brand-deep);}
+.pk-pop{
+  position:fixed;z-index:120;background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 18px 40px -14px rgba(16,24,40,.4);overflow:auto;-webkit-overflow-scrolling:touch;padding:4px;
+}
+.pk-pop[hidden]{display:none;}
+.pk-item{
+  display:block;width:100%;text-align:left;border:none;background:transparent;border-radius:7px;
+  padding:10px;font-size:13px;color:var(--ink);min-height:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pk-item:hover,.pk-item.on{background:var(--brand-soft);}
+.pk-item.new{
+  color:var(--brand);font-weight:600;border-top:1px solid var(--line-2);margin-top:2px;
+  border-radius:0 0 7px 7px;
+}
+.pk-empty{padding:11px 10px;font-size:12px;color:var(--muted);}
+
+/* 「更多」折叠 */
+.more-toggle{
+  display:flex;align-items:center;gap:6px;width:100%;background:#F8F9FB;border:1px solid var(--line);
+  border-radius:9px;padding:9px 12px;font-size:12px;color:var(--ink-2);margin:2px 0 12px;
+}
+.more-toggle.on{background:var(--brand-soft);border-color:#FFD9BE;color:var(--brand-deep);}
+.mt-ar{margin-left:auto;font-size:11px;}
+.more-wrap{padding-top:2px;}
+.more-wrap[hidden]{display:none;}
+
+/* AI 补全按钮与提示 */
+.ai-mini{
+  display:inline-flex;align-items:center;gap:3px;border:1px solid #FFD9BE;background:var(--brand-soft);
+  color:var(--brand-deep);border-radius:7px;padding:3px 8px;font-size:11px;font-weight:600;
+  margin-left:6px;vertical-align:middle;
+}
+.ai-mini:disabled{opacity:.6;cursor:not-allowed;}
+.ed-tip{font-size:10.5px;color:#A9B0BC;margin-top:5px;line-height:1.6;}
+
+/* 标题行摘要（编辑已有条目时显示「P0 · 本周要做 · 11/28」） */
+.ed-sum{
+  font-size:11px;color:var(--muted);margin-left:auto;margin-right:8px;max-width:48%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.modal-head .x{margin-left:0;}
+
+/* 未排期的日期弱化显示 */
+.time.no{color:#B0B7C2;font-weight:400;}
+
+@media (max-width:760px){
+  .pk-arrow{width:30px;height:30px;right:6px;font-size:12px;}
+  .picker input{padding-right:40px;}
+  .pk-item{min-height:44px;font-size:14px;padding:11px 10px;}
+  .more-toggle{font-size:12.5px;padding:11px 12px;min-height:42px;}
+  .ai-mini{font-size:11.5px;padding:5px 9px;}
+  .ed-tip{font-size:11px;}
+  #ed-next{min-height:88px;}
+}
+@media (max-width:380px){
+  .grid2{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -742,6 +811,7 @@ body.panel-open .content{padding-right:452px;}
   <div class="modal">
     <div class="modal-head">
       <h3 id="m-title">新建条目</h3>
+      <span class="ed-sum" id="ed-sum"></span>
       <button class="x" id="m-close">×</button>
     </div>
     <div class="modal-body">
@@ -756,14 +826,13 @@ body.panel-open .content{padding-right:452px;}
         <label>标题 *</label>
         <input id="ed-title" placeholder="一句话说清这件事 / 这个问题">
       </div>
-      <div class="field">
-        <label>具体情况 / 背景</label>
-        <textarea id="ed-desc" placeholder="现状是什么、卡在哪、已经试过什么、相关数据是多少"></textarea>
-      </div>
-      <div class="grid3">
+      <div class="grid2">
         <div class="field">
           <label>业务线</label>
-          <input id="ed-biz" list="dl-biz" placeholder="Moving 搬家">
+          <div class="picker" data-for="ed-biz">
+            <input id="ed-biz" list="dl-biz" placeholder="Moving 搬家" autocomplete="off">
+            <button class="pk-arrow" type="button" data-pick="ed-biz" aria-label="选择业务线">▾</button>
+          </div>
           <datalist id="dl-biz">
             <option value="Moving 搬家">
             <option value="Storage 仓储">
@@ -775,7 +844,10 @@ body.panel-open .content{padding-right:452px;}
         </div>
         <div class="field">
           <label>平台</label>
-          <input id="ed-platform" list="dl-plat" placeholder="Meta">
+          <div class="picker" data-for="ed-platform">
+            <input id="ed-platform" list="dl-plat" placeholder="Meta" autocomplete="off">
+            <button class="pk-arrow" type="button" data-pick="ed-platform" aria-label="选择平台">▾</button>
+          </div>
           <datalist id="dl-plat">
             <option value="Meta">
             <option value="TikTok">
@@ -787,45 +859,57 @@ body.panel-open .content{padding-right:452px;}
             <option value="Other 其他">
           </datalist>
         </div>
-        <div class="field">
-          <label>市场</label>
-          <input id="ed-market" list="dl-mkt" placeholder="HK">
-          <datalist id="dl-mkt">
-            <option value="HK">
-            <option value="US">
-            <option value="MX">
-            <option value="Global">
-          </datalist>
-        </div>
       </div>
-      <div class="grid3">
+      <div class="field">
+        <label>建议 / 解决方案 <button class="ai-mini" type="button" id="ed-suggest">✦ AI 补全</button></label>
+        <textarea id="ed-next" placeholder="AI 会按标题和背景给 3–5 条具体动作；也可以自己写" style="min-height:64px"></textarea>
+        <div class="ed-tip" id="ed-ai-tip">未配置模型时用内置框架生成；接入模型后按你的问题给方案。</div>
+      </div>
+      <button class="more-toggle" type="button" id="ed-more-btn" aria-expanded="false">更多信息（背景 · 市场 · 优先级 · 阶段 · 排期日 · 置顶）<span class="mt-ar">▾</span></button>
+      <div class="more-wrap" id="ed-more" hidden>
         <div class="field">
-          <label>优先级</label>
-          <select id="ed-pri">
-            <option value="0">P0 · 今天必须动</option>
-            <option value="1" selected>P1 · 本周处理</option>
-            <option value="2">P2 · 有空再做</option>
-          </select>
+          <label>具体情况 / 背景</label>
+          <textarea id="ed-desc" placeholder="现状是什么、卡在哪、已经试过什么、相关数据是多少"></textarea>
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <label>市场</label>
+            <div class="picker" data-for="ed-market">
+              <input id="ed-market" list="dl-mkt" placeholder="HK" autocomplete="off">
+              <button class="pk-arrow" type="button" data-pick="ed-market" aria-label="选择市场">▾</button>
+            </div>
+            <datalist id="dl-mkt">
+              <option value="HK">
+              <option value="US">
+              <option value="MX">
+              <option value="Global">
+            </datalist>
+          </div>
+          <div class="field">
+            <label>优先级</label>
+            <select id="ed-pri">
+              <option value="0">P0 · 今天必须动</option>
+              <option value="1" selected>P1 · 本周处理</option>
+              <option value="2">P2 · 有空再做</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>阶段</label>
+            <select id="ed-stage">
+              <option value="week" selected>本周要做</option>
+              <option value="later">待排期</option>
+              <option value="done">已完成</option>
+            </select>
+          </div>
         </div>
         <div class="field">
-          <label>阶段</label>
-          <select id="ed-stage">
-            <option value="week" selected>本周要做</option>
-            <option value="later">待排期</option>
-            <option value="done">已完成</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>计划日期</label>
+          <label>排期日（打算哪天做）</label>
           <input type="date" id="ed-date">
+          <div class="ed-tip">日历按这天排；不影响这条是否完成。</div>
         </div>
-      </div>
-      <div class="field">
-        <label>下一步动作</label>
-        <textarea id="ed-next" placeholder="具体到「打开哪个后台、看哪个数、找谁确认」" style="min-height:50px"></textarea>
-      </div>
-      <div class="field">
-        <div class="checkline"><input type="checkbox" id="ed-pin"><label for="ed-pin" style="margin:0;color:var(--ink-2);font-size:12px">📌 置顶标记（重点）</label></div>
+        <div class="field">
+          <div class="checkline"><input type="checkbox" id="ed-pin"><label for="ed-pin" style="margin:0;color:var(--ink-2);font-size:12px">📌 置顶标记（重点）</label></div>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -834,6 +918,7 @@ body.panel-open .content{padding-right:452px;}
       <button class="primary-btn" id="m-save">保存</button>
     </div>
   </div>
+  <div class="pk-pop" id="pk-pop" hidden></div>
 </div>
 
 <!-- ===== AI 接口设置 ===== -->
@@ -1541,12 +1626,12 @@ function itemHTML(it, compact){
         ${it.biz ? `<span class="chip biz">${esc(it.biz)}</span>` : ''}
         ${it.platform ? `<span class="chip">${esc(it.platform)}</span>` : ''}
       </span>
-      <span class="time">${fmtDate(it.created)}</span>
+      <span class="time${it.date ? '' : ' no'}">${it.date ? it.date.slice(5).replace('-', '/') : '未排期'}</span>
       <span class="chev">›</span>
     </div>
     <div class="body">
       <div class="desc${it.desc?'':' empty'}">${it.desc ? esc(it.desc) : '还没有写具体情况，点「编辑」补上，AI 才能给更准的方案。'}</div>
-      ${it.next ? `<div class="nextbox"><b>下一步</b>${esc(it.next)}</div>` : ''}
+      ${it.next ? `<div class="nextbox"><b>建议</b>${esc(it.next)}</div>` : ''}
       ${aiBlock}
       <div class="acts">
         <button class="act primary" data-act="ai" data-id="${it.id}">✦ AI 方案</button>
@@ -2529,8 +2614,8 @@ function renderPanel(){
     <div class="block-h">具体问题 / 现状</div>
     <div class="block-t">${it.desc ? esc(it.desc) : '<span style="color:#B0B7C2">还没有写具体情况</span>'}</div>
 
-    <div class="block-h">下一步</div>
-    <div class="block-t">${it.next ? esc(it.next) : '<span style="color:#B0B7C2">还没定下一步</span>'}</div>
+    <div class="block-h">建议 / 解决方案</div>
+    <div class="block-t">${it.next ? esc(it.next) : '<span style="color:#B0B7C2">还没有建议，点编辑里的「AI 补全」生成</span>'}</div>
 
     <div class="block-h">AI 简要分析</div>
     <div class="qai">
@@ -2661,8 +2746,8 @@ function renderDetail(){
       <div class="block-h">具体问题 / 现状</div>
       <div class="block-t">${it.desc ? esc(it.desc) : '<span style="color:#B0B7C2">还没有写具体情况</span>'}</div>
 
-      <div class="block-h">下一步</div>
-      <div class="block-t">${it.next ? esc(it.next) : '<span style="color:#B0B7C2">还没定下一步</span>'}</div>
+      <div class="block-h">建议 / 解决方案</div>
+      <div class="block-t">${it.next ? esc(it.next) : '<span style="color:#B0B7C2">还没有建议，点「编辑」里的「AI 补全」生成</span>'}</div>
 
       <div class="acts" style="margin-top:18px">
         <button class="act" data-act="edit" data-id="${it.id}">编辑</button>
@@ -2928,7 +3013,7 @@ async function callModel(q, it){
   const ctx = it
     ? ('业务线：' + (it.biz || '-') + '｜平台：' + (it.platform || '-') + '｜市场：' + (it.market || '-') +
        '\n阶段：' + STAGE_MAP[it.stage].name + '｜优先级：' + PRI_LABEL[it.pri] +
-       '\n标题：' + it.title + '\n具体情况：' + (it.desc || '-') + '\n已定下一步：' + (it.next || '-'))
+       '\n标题：' + it.title + '\n具体情况：' + (it.desc || '-') + '\n已给建议：' + (it.next || '-'))
     : '（未选择具体任务）';
 
   const sys = '你是 GOGOX（香港搬家 / 物流平台）Social Media Specialist 的资深策略顾问，熟悉 Meta 广告（CPI 到 lead gen 的转化优化）、TikTok、小红书、微信公众号，以及香港本地市场。回答要具体、可执行、贴合 HK 场景，不要空话。';
@@ -2954,6 +3039,104 @@ async function callModel(q, it){
   const content = c && (c.message ? c.message.content : c.text);
   if(!content) throw new Error('返回内容为空，检查模型名');
   return content;
+}
+
+/* ---------- 录入期补全：一次出「背景 + 建议」两段 ---------- */
+function htmlPlain(s){
+  return String(s || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function pickSection(html, prefix){
+  const re = new RegExp('<h5>' + prefix + '[^<]*</h5>([\\s\\S]*?)(?=<h5>|$)', 'i');
+  const m = String(html || '').match(re);
+  return m ? htmlPlain(m[1]) : '';
+}
+
+function buildLocalBrief(it){
+  const html = buildLocalAnalysis('', it);
+  const bg = pickSection(html, '① 问题定性');
+  const nums = pickSection(html, '③ 先看');
+  const advice = pickSection(html, '④ 建议动作');
+  const bgOut = (bg + (nums ? '\n\n先看这几个数：\n' + nums : '')).trim();
+  return {
+    bg: bgOut ? bgOut + '\n（内置框架生成 · 离线）' : '',
+    advice: advice ? advice + '\n（内置框架生成 · 离线）' : ''
+  };
+}
+
+function parseTwoSections(md){
+  const out = { bg: '', advice: '' };
+  let cur = null;
+  String(md || '').replace(/\r/g, '').split('\n').forEach(function(line){
+    const h = line.match(/^\s*#{2,4}\s*(.*)$/);
+    if(h){
+      const name = h[1];
+      cur = /背景|现状|情况/.test(name) ? 'bg'
+        : (/建议|方案|动作|action/i.test(name) ? 'advice' : null);
+      return;
+    }
+    if(cur) out[cur] += line + '\n';
+  });
+  out.bg = out.bg.trim();
+  out.advice = out.advice.trim();
+  if(!out.bg && !out.advice) out.advice = String(md || '').trim();
+  return out;
+}
+
+async function callCompleteModel(it){
+  const brief = state.brief || '';
+  const ctx = '业务线：' + (it.biz || '-') + '｜平台：' + (it.platform || '-') + '｜市场：' + (it.market || '-') +
+    '\n类型：' + (it.type === 'issue' ? '问题' : '任务') +
+    '\n标题：' + it.title + '\n我写的简短说明：' + (it.desc || '-');
+  const sys = '你是 GOGOX（香港搬家 / 物流平台）Social Media Specialist 的资深策略顾问，熟悉 Meta 广告（CPI 到 lead gen 的转化优化）、TikTok、小红书、微信公众号，以及香港本地市场。回答要具体、可执行、贴合 HK 场景，不要空话。';
+  const user = '【我的业务背景】\n' + brief + '\n\n【这条任务】\n' + ctx +
+    '\n\n严格按以下两段输出，不要多余的开头结尾，总长 700 字内：\n' +
+    '### 背景\n把这条的现状补完整：现象、相关数据、已做过的动作或该确认的信息，3-5 行。\n' +
+    '### 建议\n3-5 条具体动作，每条一行、以 "- " 开头，写清做什么、看哪个指标、判断标准。';
+  const res = await fetch(state.ai.baseUrl + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.ai.apiKey },
+    body: JSON.stringify({
+      model: state.ai.model,
+      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+      temperature: 0.6
+    })
+  });
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error('HTTP ' + res.status + ' · ' + t.slice(0, 120));
+  }
+  const json = await res.json();
+  const c = json && json.choices && json.choices[0];
+  const content = c && (c.message ? c.message.content : c.text);
+  if(!content) throw new Error('返回内容为空，检查模型名');
+  return content;
+}
+
+async function aiCompleteFields(draft){
+  const it = normalize(Object.assign({ id: 'draft', created: Date.now(), stage: 'later', pri: '1', next: '' }, draft));
+  if(hasModel()){
+    try{
+      const md = await callCompleteModel(it);
+      const p = parseTwoSections(md);
+      if(p.bg || p.advice) return { bg: p.bg, advice: p.advice, mode: 'model' };
+      return { bg: '', advice: '', mode: 'model', error: '返回内容里没找到「背景 / 建议」两段' };
+    }catch(err){
+      return { bg: '', advice: '', mode: 'model', error: err.message };
+    }
+  }
+  const lb = buildLocalBrief(it);
+  return { bg: lb.bg, advice: lb.advice, mode: 'local' };
 }
 
 /* ==========================================================
@@ -3282,7 +3465,7 @@ function localWeekly(stat, info){
     lines.push('');
     lines.push('【推到哪里】');
     stat.prog.slice(0, 6).forEach(function(i){
-      lines.push('- ' + i.title + (i.next ? '（下一步：' + i.next + '）' : ''));
+      lines.push('- ' + i.title + (i.next ? '（建议：' + i.next + '）' : ''));
     });
   }
   if(stat.stall.length){
@@ -3319,7 +3502,7 @@ function localDaily(stat, dk){
     lines.push('');
     lines.push('【推到哪了】');
     stat.prog.slice(0, 6).forEach(function(i){
-      lines.push('- ' + i.title + (i.next ? '（下一步：' + i.next + '）' : ''));
+      lines.push('- ' + i.title + (i.next ? '（建议：' + i.next + '）' : ''));
     });
   }
   if(stat.plan.length){
@@ -3422,6 +3605,30 @@ function fillPlatDatalist(biz){
   dl.innerHTML = names.map(function(n){ return `<option value="${esc(n)}">`; }).join('');
 }
 
+function hasModel(){
+  return !!(state.ai && state.ai.apiKey && state.ai.baseUrl && state.ai.model);
+}
+
+function summaryLine(it){
+  const parts = [];
+  if(it.pri && it.pri !== '1') parts.push(PRI_LABEL[it.pri] || '');
+  if(it.stage && it.stage !== 'week') parts.push(STAGE_MAP[it.stage] ? STAGE_MAP[it.stage].name : '');
+  if(it.date) parts.push(it.date.slice(5).replace('-', '/'));
+  if(it.pin) parts.push('置顶');
+  return parts.filter(Boolean).join(' · ');
+}
+
+function setMore(open){
+  const btn = document.getElementById('ed-more-btn');
+  const wrap = document.getElementById('ed-more');
+  if(!btn || !wrap) return;
+  wrap.hidden = !open;
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  btn.classList.toggle('on', open);
+  const ar = btn.querySelector('.mt-ar');
+  if(ar) ar.textContent = open ? '▴' : '▾';
+}
+
 function openEditor(id, presetStage, presetBiz, presetPlatform, presetDate){
   ui.editingId = id || null;
   const it = id ? state.items.find(i=>i.id === id) : null;
@@ -3440,10 +3647,84 @@ function openEditor(id, presetStage, presetBiz, presetPlatform, presetDate){
   document.getElementById('ed-pin').checked = it ? !!it.pin : false;
   document.getElementById('m-del').style.display = it ? 'block' : 'none';
   setType(it ? it.type : 'task');
+
+  // 折叠：新增默认收起；编辑时若「更多」里已有内容，自动展开并在标题行给出摘要
+  const secFilled = !!it && (!!it.desc || !!it.date || !!it.pin ||
+    (it.pri && it.pri !== '1') || (it.stage && it.stage !== 'week'));
+  setMore(!!secFilled);
+  const sum = document.getElementById('ed-sum');
+  if(sum) sum.textContent = it ? summaryLine(it) : '';
+  const tip = document.getElementById('ed-ai-tip');
+  if(tip) tip.textContent = hasModel()
+    ? '已接入 ' + state.ai.model + '，会按你的问题生成方案'
+    : '未配置模型：会用内置框架生成；接入模型后更准。';
+  if(window.__pkClose) window.__pkClose();
+
   overlay.classList.add('show');
   setTimeout(()=>document.getElementById('ed-title').focus(), 60);
 }
-function closeEditor(){ overlay.classList.remove('show'); ui.editingId = null; }
+function closeEditor(){
+  overlay.classList.remove('show');
+  if(window.__pkClose) window.__pkClose();
+  ui.editingId = null;
+}
+
+document.getElementById('ed-more-btn').addEventListener('click', function(){
+  setMore(document.getElementById('ed-more').hidden);
+});
+
+document.getElementById('ed-biz').addEventListener('change', function(){
+  const biz = String(this.value || '').trim();
+  if(biz) fillPlatDatalist(biz);
+});
+
+function autoGrow(ta){
+  if(!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(Math.max(ta.scrollHeight, 88), 260) + 'px';
+}
+
+async function aiComplete(){
+  const btn = document.getElementById('ed-suggest');
+  if(!btn || btn.disabled) return;
+  const title = document.getElementById('ed-title').value.trim();
+  const desc = document.getElementById('ed-desc').value.trim();
+  if(!title && !desc){
+    toast('先写一句标题或背景，AI 才知道要补什么');
+    document.getElementById('ed-title').focus();
+    return;
+  }
+  const draft = {
+    title: title || desc.slice(0, 40),
+    desc: desc,
+    biz: document.getElementById('ed-biz').value.trim(),
+    platform: normPlat(document.getElementById('ed-platform').value),
+    market: document.getElementById('ed-market').value.trim(),
+    type: ui.newType
+  };
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+  try{
+    const r = await aiCompleteFields(draft);
+    if(r.error){ toast('补全失败：' + r.error); return; }
+    if(r.bg) document.getElementById('ed-desc').value = r.bg;
+    if(r.advice) document.getElementById('ed-next').value = r.advice;
+    if(r.bg) setMore(true);
+    autoGrow(document.getElementById('ed-desc'));
+    autoGrow(document.getElementById('ed-next'));
+    toast(r.mode === 'model' ? '已补全，可自行修改' : '已用内置框架补全（离线），可自行修改');
+  }catch(err){
+    toast('补全失败：' + err.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+document.getElementById('ed-suggest').addEventListener('click', function(e){
+  e.preventDefault();
+  aiComplete();
+});
 
 document.getElementById('m-close').addEventListener('click', closeEditor);
 document.getElementById('m-cancel').addEventListener('click', closeEditor);
@@ -3521,6 +3802,150 @@ document.addEventListener('keydown', (e)=>{
     document.getElementById('side').classList.remove('show');
   }
 });
+
+/* ==========================================================
+   5.5 自定义选择器
+   iOS Safari / 微信内置浏览器不渲染 datalist 的候选列表，
+   手机上等于「只能手打」。这里自己画一个跨端一致的下拉：
+   点箭头弹出候选，可选中、可输入新值。
+   ========================================================== */
+(function(){
+  const pop = document.getElementById('pk-pop');
+  if(!pop) return;
+  let curId = null;
+  let items = [];
+  let hi = -1;
+
+  const SPEC = {
+    'ed-biz': function(){
+      const names = Object.keys(BIZ_COLORS || {});
+      (state.biz || []).forEach(function(b){ if(names.indexOf(b) < 0) names.push(b); });
+      return names;
+    },
+    'ed-platform': function(){
+      const bizEl = document.getElementById('ed-biz');
+      const biz = bizEl ? String(bizEl.value || '').trim() : '';
+      const names = [];
+      const add = function(x){ const v = String(x || '').trim(); if(v && names.indexOf(v) < 0) names.push(v); };
+      if(biz) platsOf(biz).forEach(add);
+      bizList().forEach(function(b){ platsOf(b).forEach(add); });
+      ['Meta','TikTok','Google','WhatsApp','小红书','公众号','独立站'].forEach(add);
+      return names;
+    },
+    'ed-market': function(){ return ['HK','US','MX','Global']; }
+  };
+
+  function place(inp){
+    const r = inp.getBoundingClientRect();
+    const w = Math.max(r.width, 220);
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - 8 - w));
+    const cap = Math.round(window.innerHeight * 0.45);
+    const below = window.innerHeight - r.bottom - 14;
+    const above = r.top - 14;
+    pop.style.width = w + 'px';
+    pop.style.left = left + 'px';
+    if(below >= 140 || below >= above){
+      pop.style.top = Math.round(r.bottom + 6) + 'px';
+      pop.style.bottom = 'auto';
+      pop.style.maxHeight = Math.min(cap, Math.max(below, 140)) + 'px';
+    }else{
+      pop.style.top = 'auto';
+      pop.style.bottom = Math.round(window.innerHeight - r.top + 6) + 'px';
+      pop.style.maxHeight = Math.min(cap, Math.max(above, 140)) + 'px';
+    }
+  }
+
+  function draw(){
+    const inp = curId ? document.getElementById(curId) : null;
+    const kw = inp ? String(inp.value || '').trim().toLowerCase() : '';
+    const list = items.filter(function(v){ return !kw || v.toLowerCase().indexOf(kw) >= 0; });
+    let html = list.map(function(v, i){
+      return '<button class="pk-item' + (i === hi ? ' on' : '') + '" type="button" data-v="' + esc(v) + '">' + esc(v) + '</button>';
+    }).join('');
+    if(!list.length) html += '<div class="pk-empty">没有匹配项，直接输入就是新值</div>';
+    html += '<button class="pk-item new" type="button" data-v="__new__">＋ 输入新值</button>';
+    pop.innerHTML = html;
+  }
+
+  function open(id){
+    const inp = document.getElementById(id);
+    if(!inp || !SPEC[id]) return;
+    curId = id;
+    hi = -1;
+    items = SPEC[id]() || [];
+    draw();
+    pop.hidden = false;
+    place(inp);
+  }
+  function close(){
+    pop.hidden = true;
+    curId = null;
+    items = [];
+    hi = -1;
+  }
+
+  document.addEventListener('click', function(e){
+    const ar = e.target.closest('[data-pick]');
+    if(ar){
+      e.preventDefault();
+      const id = ar.dataset.pick;
+      if(curId === id && !pop.hidden) close(); else open(id);
+      return;
+    }
+    const row = e.target.closest('.pk-item');
+    if(row && curId){
+      e.preventDefault();
+      const inp = document.getElementById(curId);
+      if(row.dataset.v === '__new__'){
+        close();
+        if(inp){ inp.focus(); inp.select && inp.select(); }
+        return;
+      }
+      if(inp){
+        inp.value = row.dataset.v;
+        inp.dispatchEvent(new Event('input', {bubbles:true}));
+        inp.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+      close();
+      return;
+    }
+    if(!e.target.closest('#pk-pop')) close();
+  });
+
+  document.addEventListener('input', function(e){
+    if(!curId || e.target.id !== curId) return;
+    hi = -1;
+    draw();
+    place(e.target);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(!curId) return;
+    if(e.key === 'Escape'){ close(); return; }
+    if(pop.hidden) return;
+    const rows = pop.querySelectorAll('.pk-item');
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      hi = e.key === 'ArrowDown' ? Math.min(rows.length - 1, hi + 1) : Math.max(0, hi - 1);
+      draw();
+      const on = pop.querySelector('.pk-item.on');
+      if(on && on.scrollIntoView) on.scrollIntoView({block:'nearest'});
+    }else if(e.key === 'Enter' && hi >= 0){
+      e.preventDefault();
+      const again = pop.querySelectorAll('.pk-item');
+      if(again[hi]) again[hi].click();
+    }
+  });
+
+  window.addEventListener('scroll', function(e){
+    if(pop.hidden) return;
+    if(pop.contains(e.target)) return;
+    close();
+  }, true);
+
+  window.__pkOpen = open;
+  window.__pkClose = close;
+})();
 
 /* ==========================================================
    10. 导入导出 / 设置
