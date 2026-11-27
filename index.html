@@ -2182,7 +2182,10 @@ function renderAllList(){
       if((state.biz || []).indexOf(b) < 0) return;   // 自建的空板块也列出来，方便直接加任务
       /* 板块还空着：配过平台就照旧按平台出组（每组给加任务入口），没配过平台才只给板块级按钮 */
       const plats = isUn ? [] : platsOf(b);
-      const emptyGroups = plats.length ? platGroupsHTML(b, []) : `<div style="padding:2px 0 4px"><button class="btn-plain" data-act="add-biz" data-biz="${esc(b)}" data-stage="week">＋ 往「${esc(b)}」加一条任务</button></div>`;
+      const emptyGroups = plats.length ? platGroupsHTML(b, []) : `<div style="padding:2px 0 4px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-plain" data-act="add-biz" data-biz="${esc(b)}" data-stage="week">＋ 往「${esc(b)}」加一条任务</button>
+          <button class="btn-plain" data-act="add-plat" data-biz="${esc(b)}">＋ 加平台</button>
+        </div>`;
       parts.push(`<section class="sec">
         <div class="stage-head">
           <span class="sdot" style="background:${bizColor(b)}"></span>
