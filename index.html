@@ -240,6 +240,13 @@ body.panel-open .content{padding-right:452px;}
 /* 清单里的平台小标题 */
 .pg-head{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:#5D6675;margin:11px 2px 5px;}
 .pg-head .pgn{font-size:10.5px;font-weight:500;color:#98A2B3;background:#F1F4F8;border-radius:5px;padding:1px 6px;}
+/* 列表里平台组内的类型细分标题 */
+.sub-lab{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#8E96A3;margin:6px 2px 4px;letter-spacing:.2px;}
+.sub-lab .sl-dot{width:5px;height:5px;border-radius:50%;background:#C3CAD5;flex:none;}
+.sub-lab b{font-weight:600;color:#5F6875;font-variant-numeric:tabular-nums;}
+.sub-lab.issue{color:#C43333;}
+.sub-lab.issue .sl-dot{background:#E24A4A;}
+.sub-lab.issue b{color:#C43333;}
 
 .canvas-tip{position:absolute;left:14px;bottom:12px;font-size:11px;color:#A9B0BC;background:rgba(255,255,255,.92);
   border:1px solid var(--line-2);border-radius:7px;padding:3px 9px;pointer-events:none;}
@@ -488,6 +495,7 @@ body.panel-open .content{padding-right:452px;}
   .stage-head .shint{font-size:11.5px;flex:1 1 100%;margin-left:0;}
   .pg-head{font-size:13px;margin:14px 2px 8px;}
   .pg-head .pgn{font-size:11.5px;}
+  .sub-lab{font-size:12px;margin:9px 2px 6px;}
   .items{gap:8px;}
   .item{border-radius:12px;}
   .row{padding:13px 13px;min-height:56px;gap:10px;}
@@ -2097,15 +2105,24 @@ function backToCanvas(){
   render();
   syncPan(!pan.inited);
 }
-/* 总览 / 清单里：板块内部再按平台分段 */
+/* 总览 / 清单里：板块内部再按平台分段，平台内再按类型分开（问题在前、任务在后） */
 function platGroupsHTML(biz, arr){
   const groups = bucketPlats(biz, arr);
   return groups.map(function(pg){
     if(!pg.items.length && pg.loose) return '';
+    const iss = pg.items.filter(function(i){ return i.type === 'issue'; });
+    const tsk = pg.items.filter(function(i){ return i.type !== 'issue'; });
+    const listOf = function(list){ return `<div class="items">${list.map(function(it){ return itemHTML(it, true); }).join('')}</div>`; };
+    let body;
+    if(!pg.items.length){
+      body = `<div style="padding:2px 0 4px"><button class="btn-plain" data-act="add-task" data-biz="${esc(biz)}" data-plat="${esc(pg.name)}" data-stage="week">＋ 往「${esc(pg.name)}」加一条任务</button></div>`;
+    }else{
+      /* 有条目就按类型分层：有哪一类就显示哪一类的标题，两类都有则问题在前 */
+      body = '';
+      if(iss.length) body += `<div class="sub-lab issue"><span class="sl-dot"></span>问题 <b>${iss.length}</b></div>` + listOf(iss);
+      if(tsk.length) body += `<div class="sub-lab task"><span class="sl-dot"></span>任务 <b>${tsk.length}</b></div>` + listOf(tsk);
+    }
     const head = `<div class="pg-head"><span>${esc(pg.name)}</span><span class="pgn">${pg.items.length} 条</span></div>`;
-    const body = pg.items.length
-      ? `<div class="items">${pg.items.map(function(it){ return itemHTML(it, true); }).join('')}</div>`
-      : `<div style="padding:2px 0 4px"><button class="btn-plain" data-act="add-task" data-biz="${esc(biz)}" data-plat="${esc(pg.name)}" data-stage="week">＋ 往「${esc(pg.name)}」加一条任务</button></div>`;
     return head + body;
   }).join('');
 }
