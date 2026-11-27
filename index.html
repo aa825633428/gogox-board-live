@@ -167,7 +167,11 @@ body.panel-open .content{padding-right:452px;}
 .node-task.p1{border-left-color:#F0A020;}
 .node-task.p2{border-left-color:#CCD2DB;}
 .node-task .tname{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);}
-.node-task .tflag{font-size:9.5px;color:#C43333;background:var(--danger-soft);border-radius:4px;padding:0 4px;flex:none;}
+.node-task .tflag{font-size:9.5px;color:#fff;background:#E24A4A;border-radius:4px;padding:1px 5px;flex:none;letter-spacing:.5px;}
+.node-task.is-issue{background:#FFF7F7;border-color:#F6D5D5;}
+.node-task.is-issue .tname{color:#94302F;}
+.node-task.is-issue:hover{border-color:#F2B9B9;background:#FFF3F3;}
+.pill.plat .pcount.iss{color:#C43333;background:#FDECEC;font-weight:600;}
 .node-task .taidot{font-size:10px;color:var(--brand);flex:none;}
 .node-task .pinmark{font-size:9px;flex:none;}
 
@@ -272,7 +276,8 @@ body.panel-open .content{padding-right:452px;}
 .ttl{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0;}
 .item.open .ttl{font-weight:600;}
 .mini{font-size:10px;padding:1px 5px;border-radius:4px;flex:none;}
-.mini.issue{background:var(--danger-soft);color:#C43333;}
+.mini.issue{background:#E24A4A;color:#fff;font-weight:600;}
+.item.is-issue{background:#FFFCFC;}
 .pinmark{font-size:10px;flex:none;}
 .chips{display:flex;gap:4px;flex:none;margin-left:auto;}
 .chip{font-size:10px;padding:1.5px 6px;border-radius:5px;background:#F2F4F7;color:#6C7481;border:1px solid #E9ECF1;white-space:nowrap;}
@@ -1620,7 +1625,7 @@ function itemHTML(it, compact){
        </div>`
     : '';
 
-  return `<div class="item p${pri}${open?' open':''}" data-id="${it.id}">
+  return `<div class="item p${pri}${it.type==='issue' ? ' is-issue' : ''}${open?' open':''}" data-id="${it.id}">
     <div class="row" data-act="toggle" data-id="${it.id}">
       <span class="pbar"></span>
       <span class="ttl">${esc(it.title)}</span>
@@ -1776,6 +1781,7 @@ function renderFlow(){
       const key = g.biz + '||' + pg.name;
       const pOpen = ui.closedPlat.indexOf(key) < 0;
       const custom = !!(bo.x || bo.y || po.x || po.y);
+      const issN = pg.items.filter(function(i){ return i.type === 'issue'; }).length;
 
       // 板块按钮 → 列头：默认走横杆折线，被拖过就直接连
       if(custom){
@@ -1789,7 +1795,7 @@ function renderFlow(){
           <span class="car">${pOpen?'▾':'▸'}</span>
           <span class="pdot" style="background:${g.color}"></span>
           <span class="pname">${esc(pg.name)}</span>
-          <span class="pcount">${pg.items.length}</span>
+          <span class="pcount">${pg.items.length}</span>${issN ? `<span class="pcount iss" title="这一列里有 ${issN} 条问题">问题 ${issN}</span>` : ''}
           ${pg.loose ? '' : `<span class="hoverx" data-act="del-plat" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="删除这个平台分栏">✕</span>`}
           <span class="plusx" data-act="add-task" data-biz="${esc(g.biz)}" data-plat="${esc(pg.loose ? '' : pg.name)}" data-plat-key="${esc(pg.name)}" data-stage="week" title="往「${esc(pg.name)}」加一条任务">+</span>
         </div>`);
@@ -1805,9 +1811,9 @@ function renderFlow(){
           const tLeft = Math.round(colLeft + to.x);
           const tTop = Math.round(y + to.y);
           const sel = (ui.panelId === it.id) ? ' sel' : '';
-          nodes.push(`<div class="node-task p${it.pri}${sel}" data-act="open" data-id="${it.id}" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="按住可拖动：${esc(it.title)}" style="left:${tLeft}px;top:${tTop}px;width:${TW}px">
+          nodes.push(`<div class="node-task p${it.pri}${it.type === 'issue' ? ' is-issue' : ''}${sel}" data-act="open" data-id="${it.id}" data-biz="${esc(g.biz)}" data-plat="${esc(pg.name)}" title="按住可拖动：${esc(it.title)}" style="left:${tLeft}px;top:${tTop}px;width:${TW}px">
               <span class="tname">${esc(it.title)}</span>
-              ${it.type === 'issue' ? '<span class="tflag">问</span>' : ''}
+              ${it.type === 'issue' ? '<span class="tflag">问题</span>' : ''}
               ${it.pin ? '<span class="pinmark">📌</span>' : ''}
               ${it.aiPlan ? '<span class="taidot" title="已有 AI 方案">✦</span>' : ''}
               <span class="hoverx" data-act="del-task" data-id="${it.id}" title="删除这条任务">✕</span>
